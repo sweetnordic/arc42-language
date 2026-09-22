@@ -20,9 +20,9 @@ export const w016BlockNotInArc42Fence: Rule = {
     type: "suggestion",
     docs: {
       description:
-        "Block is not wrapped in a ```arc42 fence — wrap :::blocks with ```arc42 / ``` for proper Markdown rendering",
+        "Block is not wrapped in a ```arc42 fence — wrap :::blocks with ```arc42 / ``` in Markdown, or use [arc42.<type>] / ---- in AsciiDoc",
       rationale:
-        "Standard Markdown renderers do not understand the :::type syntax and render the delimiter lines as raw text. Wrapping a :::block in ```arc42 ... ``` causes renderers to display it as a styled, bordered code block, making the document readable in GitHub, VS Code, and AI tools without changing the DSL or the parser output. Diagram metadata must also be inside the ```arc42 fence so the parser can distinguish it from prose.",
+        "Standard Markdown renderers do not understand the :::type syntax and render the delimiter lines as raw text. Wrapping a :::block in ```arc42 ... ``` causes renderers to display it as a styled, bordered code block, making the document readable in GitHub, VS Code, and AI tools without changing the DSL or the parser output. Diagram metadata must also be inside the ```arc42 fence so the parser can distinguish it from prose. In AsciiDoc, write [arc42.<type>] followed by a ---- delimited body; that form is already a first-class block and does not need an extra wrapper.",
       arc42Chapter: 0,
       recommended: true,
     },

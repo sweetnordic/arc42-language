@@ -21,9 +21,9 @@ export const w017BareMermaidBlock: Rule = {
     type: "suggestion",
     docs: {
       description:
-        "Mermaid fenced block has no :::diagram metadata block — add :::diagram with id, notation, and scenario/view. Hint: place the :::diagram in its own ```arc42 fenced block so it gets recognized.",
+        "Mermaid source has no diagram metadata — add :::diagram before a ```mermaid fence in Markdown, or [arc42.diagram] before [source,…] in AsciiDoc",
       rationale:
-        "A :::diagram block before the ```mermaid fence gives the diagram an id and links it to a runtime scenario or deployment view. Without it the diagram is anonymous: it renders visually but cannot be queried, validated against the model, or cross-referenced from other elements. The fix is a three-line :::diagram block immediately before the ```mermaid fence.",
+        "A :::diagram block before the ```mermaid fence gives the diagram an id and links it to a runtime scenario or deployment view. Without it the diagram is anonymous: it renders visually but cannot be queried, validated against the model, or cross-referenced from other elements. The Markdown fix is a :::diagram block inside ```arc42 immediately before the ```mermaid fence. In AsciiDoc write [arc42.diagram] then ---- attributes ---- and a following [source,mermaid] block.",
       arc42Chapter: 6,
       recommended: true,
     },

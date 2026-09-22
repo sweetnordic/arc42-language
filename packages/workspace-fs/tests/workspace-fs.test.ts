@@ -62,6 +62,24 @@ describe("filesystem workspace adapter", () => {
     }
   });
 
+  test("discovers .arc42.md and .arc42.adoc and skips a plain .adoc file", async () => {
+    const root = await mkdtemp(join(tmpdir(), "arc42-workspace-fs-"));
+    try {
+      await writeFile(join(root, "notes.adoc"), "= Notes\n");
+      await writeFile(join(root, "quality.arc42.md"), "# Quality\n");
+      await writeFile(join(root, "blocks.arc42.adoc"), "= Blocks\n");
+      const files = await discoverFiles(root);
+      expect(files.sort()).toEqual(
+        [join(root, "blocks.arc42.adoc"), join(root, "quality.arc42.md")].sort(),
+      );
+      expect((await readWorkspaceDocuments(root)).map((doc) => doc.filePath).sort()).toEqual(
+        files.sort(),
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   // This test creates a plain temp directory (not a git repo).
   // pathEvidence() and loadWorkspace() will fall back to the filesystem walker.
   test("supplies path evidence and resolves interface relationships in the payload", async () => {

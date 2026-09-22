@@ -1,8 +1,13 @@
 import { CHAPTERS, chapter } from "./chapters.ts";
+import { markdownTemplateToAsciiDoc } from "./template-asciidoc.ts";
 
 export { CHAPTERS };
 
-export function guideText(subcommand = "migration", argument?: string): string {
+export function guideText(
+  subcommand = "migration",
+  argument?: string,
+  format: "markdown" | "asciidoc" = "markdown",
+): string {
   if (subcommand === "migration") {
     return `# arc42 migration guide
 
@@ -13,8 +18,8 @@ subagents, maintain the evidence file, and own the review gates. Never invent ar
 silently resolve contradictions, or automatically repair validation findings.
 
 ## Objective and completion criteria
-Produce twelve \`*.arc42.md\` chapter files and \`architecture-evidence.md\` in the selected
-workspace. The migration is complete only when:
+Produce twelve \`*.arc42.md\` or \`*.arc42.adoc\` chapter files and \`architecture-evidence.md\` in the selected
+workspace. Use one suffix for the whole workspace. The migration is complete only when:
 - every chapter has been considered and its important facts have evidence or an explicit \`OPEN:\` item;
 - a human has reviewed the evidence, assumptions, contradictions, and chapter summaries; and
 - \`arc42 validate --dir <workspace>\` reports zero errors, with remaining warnings or hints presented
@@ -27,7 +32,7 @@ workspace. The migration is complete only when:
 4. Do not begin authoring until you have read this guide and understand the human-review gate.
 
 ## Artifacts and state
-- \`<workspace>/*.arc42.md\`: the twelve typed chapter files.
+- \`<workspace>/*.arc42.md\` or \`<workspace>/*.arc42.adoc\`: the twelve typed chapter files.
 - \`<workspace>/architecture-evidence.md\`: the separate traceability file; it is not an arc42 chapter.
 - The evidence file's \`OPEN:\` entries are the hand-off list for human decisions.
 - If interrupted, inspect these artifacts and resume at the earliest incomplete step; do not restart
@@ -36,7 +41,7 @@ workspace. The migration is complete only when:
 ## Step 1 — initialize the workspace
 Create the chapter files on demand as you work through each chapter. Before authoring a chapter,
 run \`arc42 guide chapter <number>\` to get the brief and starter template, then create the
-corresponding \`*.arc42.md\` file. Do not create all files upfront.
+corresponding \`*.arc42.md\` or \`*.arc42.adoc\` file. Do not create all files upfront.
 Check that each file exists before writing content; if a file already contains authored
 content, preserve it and treat it as input to the inventory.
 
@@ -86,7 +91,7 @@ format with \`arc42 guide evidence\`.`;
     return `# arc42 migration evidence
 
 ## Purpose
-Maintain this document separately from all \`*.arc42.md\` chapters. It traces facts and important
+Maintain this document separately from all \`*.arc42.md\` and \`*.arc42.adoc\` chapters. It traces facts and important
 relationships back to repository evidence and gives the coordinator a review list. It is not parsed
 by the arc42 validator. Suggested location: \`<workspace>/architecture-evidence.md\`.
 
@@ -111,7 +116,9 @@ all medium/low-confidence and \`OPEN:\` rows to a human before final validation.
   if (subcommand === "chapter") {
     const item = chapter(Number(argument));
     if (!item) throw new Error("Chapter must be a number from 1 to 12.");
-    const template = item.template;
+    const template =
+      format === "asciidoc" ? markdownTemplateToAsciiDoc(item.template) : item.template;
+    const fence = format === "asciidoc" ? "asciidoc" : "markdown";
     return `# Chapter ${item.number}: ${item.title}
 
 ## Dependencies
@@ -130,8 +137,13 @@ all unresolved items to the coordinator.
 5. Confirm that every cross-reference target exists, or report it as an \`OPEN:\` dependency.
 
 ## Authoring rules
-- Use one \`##\` section per element: heading, prose explaining intent, then one fenced \`arc42\` block.
-- Keep every \`:::block\` inside a \`\`\`arc42\`\`\` fence. Do not put two blocks under one heading.
+${
+  format === "asciidoc"
+    ? `- Use one \`==\` section per element: heading, prose explaining intent, then one \`[arc42.<type>]\` block.
+- Write typed blocks as \`[arc42.<type>]\` followed by a \`----\` body. Do not put two blocks under one heading.`
+    : `- Use one \`##\` section per element: heading, prose explaining intent, then one fenced \`arc42\` block.
+- Keep every \`:::block\` inside a \`\`\`arc42\`\`\` fence. Do not put two blocks under one heading.`
+}
 - Do not invent IDs or field values. Omit unsupported values and record \`OPEN: <question>\` instead.
 - Cite every derived fact in \`architecture-evidence.md\`, including important relationships.
 - Preserve existing authored content unless the coordinator or human explicitly approves a change.
@@ -145,7 +157,7 @@ validation only after all chapters and the human review gate are complete.
 ${item.commands.map((command) => `- \`${command}\``).join("\n")}
 
 ## Starter template
-\`\`\`markdown
+\`\`\`${fence}
 ${template.trimEnd()}
 \`\`\`
 `;

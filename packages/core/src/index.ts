@@ -115,3 +115,6 @@ export type {
 // Coverage — computeCoverage is used by workspace-fs; types are re-exported from renderer/types
 export { computeCoverage } from "./coverage.ts";
 export { warmMermaid } from "@arc42/mermaid";
+export { isArchitectureFile, chapterNumberFromFile } from "./path-utils.ts";
+export { parseAsciiDoc, AsciiDocParser } from "./parser/asciidoc-parser.ts";
+export { renderAsciiDocSource } from "./parser/asciidoc-writer.ts";

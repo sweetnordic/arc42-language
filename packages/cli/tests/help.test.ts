@@ -28,7 +28,16 @@ describe("CLI help", () => {
 
   test("root help lists every command with its purpose", () => {
     const help = rootHelp();
-    for (const command of ["validate", "get", "rules", "explain", "guide", "diff", "serve"]) {
+    for (const command of [
+      "validate",
+      "get",
+      "rules",
+      "explain",
+      "guide",
+      "diff",
+      "serve",
+      "init",
+    ]) {
       expect(help).toContain(command);
     }
     expect(help).toContain("Check architecture documents for consistency");
@@ -38,7 +47,7 @@ describe("CLI help", () => {
   test("subcommand help explains usage and options", () => {
     expect(commandHelp("validate")).toContain("--format <text|json>");
     expect(commandHelp("diff")).toContain("--staged, --cached");
-    expect(commandHelp("init")).toBeUndefined();
+    expect(commandHelp("init")).toContain("--format <markdown|asciidoc>");
     expect(commandHelp("guide")).toContain("guide chapter <1-12>");
     expect(commandHelp("guide", "chapter")).toContain("generated starter template");
     expect(commandHelp("guide", "chapter")).not.toContain("chapter focus");

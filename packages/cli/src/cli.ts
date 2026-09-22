@@ -10,7 +10,7 @@ import {
   createReadStream,
   watch,
 } from "node:fs";
-import { join, dirname, extname } from "node:path";
+import { join, dirname, extname, resolve } from "node:path";
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
 import { discoverArc42Dir } from "./discover.ts";
@@ -35,7 +35,9 @@ import type { BlockType, Diagnostic, DiagramType } from "@arc42/core";
 import { collectGitDiff, getElements, loadWorkspace, validateWorkspace } from "@arc42/workspace-fs";
 import { commandHelp, rootHelp } from "./help.ts";
 import { CHAPTERS, guideText } from "./guide.ts";
+import { filename } from "./chapters.ts";
 import { formatCoverageTree } from "./coverage-tree.ts";
+import { markdownTemplateToAsciiDoc } from "./template-asciidoc.ts";
 
 // Directory of the running CLI file — used to locate bundled assets
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -126,9 +128,12 @@ async function main() {
     // Unknown command — fall through to error handling below
   }
 
-  // Guide output only uses bundled assets and must not trigger workspace discovery warnings.
+  // Guide and init only use bundled assets and must not trigger workspace discovery warnings.
   if (command === "guide") {
     runGuide(commandArgs);
+  }
+  if (command === "init") {
+    runInit(commandArgs, globalValues["dir"] as string | undefined);
   }
 
   const dir = resolveDir(globalValues["dir"] as string | undefined);
@@ -536,21 +541,69 @@ function runExplain(args: string[]) {
 // ---------------------------------------------------------------------------
 
 function runGuide(args: string[]) {
-  const { positionals } = parseArgs({
+  const { values, positionals } = parseArgs({
     args,
-    options: {},
+    options: {
+      format: { type: "string", default: "markdown" },
+    },
     allowPositionals: true,
   });
+
+  const format = (values["format"] as string) || "markdown";
+  if (format !== "markdown" && format !== "asciidoc") {
+    console.error(`Unknown --format '${format}'. Use markdown or asciidoc.`);
+    process.exit(2);
+  }
 
   const subcommand = positionals[0] ?? "migration";
   const argument = positionals[1];
   try {
-    console.log(guideText(subcommand, argument));
+    console.log(guideText(subcommand, argument, format));
     process.exit(0);
   } catch (err) {
     console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(2);
   }
+}
+
+function runInit(args: string[], globalDir: string | undefined) {
+  const { values } = parseArgs({
+    args,
+    options: {
+      dir: { type: "string" },
+      format: { type: "string", default: "markdown" },
+    },
+    allowPositionals: true,
+    strict: false,
+  });
+
+  const format = (values["format"] as string) || "markdown";
+  if (format !== "markdown" && format !== "asciidoc") {
+    console.error(`Unknown --format '${format}'. Use markdown or asciidoc.`);
+    process.exit(2);
+  }
+
+  const dirFlag = values["dir"];
+  const target = resolve(typeof dirFlag === "string" ? dirFlag : (globalDir ?? process.cwd()));
+  mkdirSync(target, { recursive: true });
+
+  let written = 0;
+  for (const item of CHAPTERS) {
+    const name =
+      format === "asciidoc"
+        ? filename(item).replace(/\.arc42\.md$/, ".arc42.adoc")
+        : filename(item);
+    const dest = join(target, name);
+    if (existsSync(dest)) {
+      console.error(`skip: ${dest} already exists`);
+      continue;
+    }
+    const body = format === "asciidoc" ? markdownTemplateToAsciiDoc(item.template) : item.template;
+    writeFileSync(dest, body.endsWith("\n") ? body : `${body}\n`);
+    written += 1;
+  }
+  console.log(`Wrote ${written} chapter file(s) to ${target}`);
+  process.exit(0);
 }
 
 // ---------------------------------------------------------------------------
@@ -620,7 +673,7 @@ async function runServe(dir: string, args: string[]) {
   try {
     watcher = watch(dir, { recursive: true }, (_event, filename) => {
       const changed = filename?.toString() ?? "";
-      if (changed && !changed.endsWith(".arc42.md")) return;
+      if (changed && !changed.endsWith(".arc42.md") && !changed.endsWith(".arc42.adoc")) return;
       if (reloadTimer) clearTimeout(reloadTimer);
       reloadTimer = setTimeout(reloadWorkspace, 100);
     });

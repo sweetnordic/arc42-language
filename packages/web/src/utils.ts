@@ -3,7 +3,10 @@ export function basename(filePath: string): string {
   const parts = filePath.replace(/\\/g, "/").split("/");
   const name = parts[parts.length - 1] ?? filePath;
   // Strip .arc42.md or just .md for display
-  return name.replace(/\.arc42\.md$/, "").replace(/\.md$/, "");
+  return name
+    .replace(/\.arc42\.adoc$/, "")
+    .replace(/\.arc42\.md$/, "")
+    .replace(/\.md$/, "");
 }
 
 /** Return the bare filename (last path segment, with extension) */

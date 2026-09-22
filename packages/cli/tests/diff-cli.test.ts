@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "vite-plus/test";
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 const cliPath = fileURLToPath(new URL("../src/cli.ts", import.meta.url));
@@ -12,7 +13,7 @@ function git(root: string, ...args: string[]): string {
 }
 
 function repository(): string {
-  const root = mkdtempSync(join(process.env.TMPDIR ?? "/tmp", "arc42-cli-diff-"));
+  const root = mkdtempSync(join(tmpdir(), "arc42-cli-diff-"));
   createdDirs.push(root);
   git(root, "init", "-q");
   git(root, "config", "user.email", "test@example.com");
@@ -115,7 +116,7 @@ afterEach(() => {
 
 describe("CLI diff coverage degradation hints", () => {
   function repoWithCoverage(): { root: string; base: string } {
-    const root = mkdtempSync(join(process.env.TMPDIR ?? "/tmp", "arc42-cli-coverage-"));
+    const root = mkdtempSync(join(tmpdir(), "arc42-cli-coverage-"));
     createdDirs.push(root);
     git(root, "init", "-q");
     git(root, "config", "user.email", "test@example.com");

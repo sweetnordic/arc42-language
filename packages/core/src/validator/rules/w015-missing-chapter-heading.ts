@@ -6,7 +6,7 @@ import { chapterNumberFromFile } from "../../path-utils.ts";
 /**
  * W015 — A numbered arc42 chapter document is missing a correct h1 heading.
  *
- * Each file named `NN-*.arc42.md` (where NN is 01–12) must start with a
+ * Each file named `NN-*.arc42.md` or `NN-*.arc42.adoc` (where NN is 01–12) must start with a
  * level-1 heading whose text matches the official EN or DE chapter title for
  * that chapter number. Files without a numeric prefix are silently skipped.
  */

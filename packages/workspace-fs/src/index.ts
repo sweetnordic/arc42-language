@@ -4,6 +4,7 @@ import {
   computeCoverage,
   getElementsFromDocuments,
   loadWorkspaceFromDocuments,
+  isArchitectureFile,
   parseArchitectureDocument,
   validateDocumentsAsync,
   warmMermaid,
@@ -30,7 +31,7 @@ export async function discoverFiles(dir: string): Promise<string[]> {
     for (const entry of entries) {
       const path = resolve(current, entry.name);
       if (entry.isDirectory()) await walk(path);
-      else if (entry.isFile() && entry.name.endsWith(".arc42.md")) files.push(path);
+      else if (entry.isFile() && isArchitectureFile(entry.name)) files.push(path);
     }
   }
   await walk(resolve(dir));

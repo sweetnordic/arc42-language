@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, realpathSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
-import { parseArchitectureDocument } from "@arc42/core";
+import { isArchitectureFile, parseArchitectureDocument } from "@arc42/core";
 import type { DocumentAst, FileChange, LineRange } from "@arc42/core";
 
 export interface GitArchitectureDiff {
@@ -175,7 +175,7 @@ export function collectGitDiff(
   const currentDocuments = new Map<string, string>();
   const currentPaths = stagedFiles(resolvedRoot);
   for (const filePath of currentPaths.filter(
-    (file) => file.endsWith(".arc42.md") && inWorkspace(file),
+    (file) => isArchitectureFile(file) && inWorkspace(file),
   )) {
     let content: string | undefined;
     try {
@@ -194,7 +194,7 @@ export function collectGitDiff(
       ? baseFiles(resolvedRoot, base)
       : currentPaths;
   for (const filePath of basePaths.filter(
-    (file) => file.endsWith(".arc42.md") && inWorkspace(file),
+    (file) => isArchitectureFile(file) && inWorkspace(file),
   )) {
     const content = gitContents(resolvedRoot, reference ? base : staged ? base : ":", filePath);
     if (content !== undefined) baseDocuments.set(filePath, content);

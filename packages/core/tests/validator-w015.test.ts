@@ -1,6 +1,7 @@
 import { expect, test, describe } from "vite-plus/test";
 import { validate } from "../src/validator/index.ts";
 import { buildIndex } from "../src/resolver/index.ts";
+import { parseArchitectureDocument } from "../src/arc42.ts";
 import { parseMarkdown } from "../src/parser/markdown-parser.ts";
 import { buildWorkspace } from "../src/model/builder.ts";
 
@@ -59,6 +60,13 @@ describe("W015 — missing or invalid arc42 chapter h1 heading", () => {
     const ws = workspaceFromContent("building-blocks.arc42.md", content);
     const diags = validate(ws, buildIndex(ws));
     expect(diags.some((d) => d.code === "W015")).toBe(false);
+  });
+
+  test("emitted for a numbered .arc42.adoc file missing the chapter title", () => {
+    const content = `= My Custom Title\n\nSome content.`;
+    const ws = buildWorkspace([parseArchitectureDocument("06-runtime-view.arc42.adoc", content)]);
+    const diags = validate(ws, buildIndex(ws));
+    expect(diags.some((d) => d.code === "W015")).toBe(true);
   });
 
   test("NOT emitted for files not ending in .arc42.md", () => {

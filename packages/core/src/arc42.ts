@@ -1,4 +1,5 @@
 import { MarkdownParser } from "./parser/markdown-parser.ts";
+import { AsciiDocParser } from "./parser/asciidoc-parser.ts";
 import { buildWorkspace } from "./model/builder.ts";
 import { buildIndex } from "./resolver/index.ts";
 import { validate, validateAsync } from "./validator/index.ts";
@@ -29,6 +30,9 @@ export interface GetDocumentsOptions {
 }
 
 export function parseArchitectureDocument(filePath: string, content: string): DocumentAst {
+  if (filePath.endsWith(".arc42.adoc")) {
+    return new AsciiDocParser().parse(filePath, content);
+  }
   return new MarkdownParser().parse(filePath, content);
 }
 

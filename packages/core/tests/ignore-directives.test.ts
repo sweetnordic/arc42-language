@@ -1,4 +1,5 @@
 import { expect, test, describe } from "vite-plus/test";
+import { parseArchitectureDocument } from "../src/arc42.ts";
 import { parseMarkdown } from "../src/parser/markdown-parser.ts";
 import { buildWorkspace } from "../src/model/builder.ts";
 import { buildIndex } from "../src/resolver/index.ts";
@@ -128,5 +129,23 @@ priority: medium
 
     // W019 directive is stale (nothing to suppress) → emits W019 for itself
     expect(result.some((d) => d.code === "W019")).toBe(true);
+  });
+
+  test("AsciiDoc [arc42.ignore] suppresses a matching hint or warning", () => {
+    const document = parseArchitectureDocument(
+      "a.arc42.adoc",
+      `[arc42.ignore]
+----
+W004 intentional
+----
+[arc42.quality-goal]
+----
+id: qg-1
+title: Quality
+priority: high
+----`,
+    );
+    const result = diagnostics([document]);
+    expect(result.filter((d) => d.code === "W004")).toHaveLength(0);
   });
 });

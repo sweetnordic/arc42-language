@@ -49,6 +49,7 @@ arc42 rules
 # JSON output for scripting and agent use
 arc42 --dir ./docs validate --format json
 arc42 --dir ./docs get --format json
+arc42 --dir ./docs get --format asciidoc
 
 # Discover commands and their purpose
 arc42 --help

@@ -3,10 +3,16 @@ export function basename(path: string): string {
   return path.replaceAll("\\", "/").split("/").pop() ?? "";
 }
 
+/** True when the path is an architecture document (`.arc42.md` or `.arc42.adoc`). */
+export function isArchitectureFile(path: string): boolean {
+  const file = basename(path);
+  return file.endsWith(".arc42.md") || file.endsWith(".arc42.adoc");
+}
+
 /** Extract the arc42 chapter number from a numbered chapter filename. */
 export function chapterNumberFromFile(path: string): number | null {
   const file = basename(path);
-  if (!file.endsWith(".arc42.md")) return null;
+  if (!isArchitectureFile(file)) return null;
 
   const match = /^(\d{2})-/.exec(file);
   if (!match) return null;

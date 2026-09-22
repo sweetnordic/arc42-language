@@ -42,6 +42,16 @@ describe("E016 — typed elements are assigned to their canonical chapter", () =
     expect(diagnosticsFor("05-building-blocks.arc42.md", iface)).toHaveLength(0);
   });
 
+  test("accepts an interface in 05-building-blocks.arc42.adoc", () => {
+    expect(diagnosticsFor("05-building-blocks.arc42.adoc", iface)).toHaveLength(0);
+  });
+
+  test("reports an actor in 05-building-blocks.arc42.adoc", () => {
+    const diagnostics = diagnosticsFor("05-building-blocks.arc42.adoc", actor);
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]?.message).toContain("actor 'customer'");
+  });
+
   test("applies the same rule to non-interface elements", () => {
     const diagnostics = diagnosticsFor("05-building-blocks.arc42.md", actor);
     expect(diagnostics).toHaveLength(1);

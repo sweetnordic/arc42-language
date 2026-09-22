@@ -1,6 +1,6 @@
 ---
 name: arc42-language
-description: Use when working on this project's architecture documentation in .arc42.md files.
+description: Use when working on this project's architecture documentation in .arc42.md or .arc42.adoc files.
 allowed-tools: Bash(arc42:*)
 ---
 
@@ -28,6 +28,15 @@ so be sure to always align.
 
    ```arc42
    :::ignore H020 Two interfaces, same entry point — intentional split contract :::
+   ```
+
+   In AsciiDoc:
+
+   ```asciidoc
+   [arc42.ignore]
+   ----
+   H020 Two interfaces, same entry point — intentional split contract
+   ----
    ```
 
    The rule code is case-insensitive. A reason is optional but recommended. One directive suppresses

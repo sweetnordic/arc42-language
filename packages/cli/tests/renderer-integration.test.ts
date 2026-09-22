@@ -41,6 +41,7 @@ describe("public core renderers", () => {
       "text",
       "json",
       "markdown",
+      "asciidoc",
     ]);
     expect(rendererById.get("text")?.meta.mimeType).toBe("text/plain");
     expect(rendererById.get("json")?.meta.mimeType).toBe("application/json");

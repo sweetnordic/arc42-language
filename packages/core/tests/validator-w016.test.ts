@@ -1,6 +1,7 @@
 import { expect, test, describe } from "vite-plus/test";
 import { validate } from "../src/validator/index.ts";
 import { buildIndex } from "../src/resolver/index.ts";
+import { parseArchitectureDocument } from "../src/arc42.ts";
 import { parseMarkdown } from "../src/parser/markdown-parser.ts";
 import { buildWorkspace } from "../src/model/builder.ts";
 
@@ -87,5 +88,21 @@ sequenceDiagram
     const diags = validate(ws, idx);
     const w016 = diags.filter((d) => d.code === "W016");
     expect(w016[0]!.line).toBe(1);
+  });
+
+  test("NOT emitted for a well-formed [arc42.building-block] AsciiDoc block", () => {
+    const content = `== My Section
+
+Some prose.
+
+[arc42.building-block]
+----
+id: bb-1
+title: My Block
+technology: Go
+----`;
+    const ws = buildWorkspace([parseArchitectureDocument("test.arc42.adoc", content)]);
+    const diags = validate(ws, buildIndex(ws));
+    expect(diags.some((d) => d.code === "W016")).toBe(false);
   });
 });

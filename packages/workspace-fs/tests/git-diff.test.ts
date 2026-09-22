@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "vite-plus/test";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { collectGitDiff, parseDiffPathHeader } from "../src/git-diff.ts";
 
 const createdDirs: string[] = [];
@@ -11,7 +12,7 @@ function git(root: string, ...args: string[]): string {
 }
 
 function repository(): string {
-  const root = mkdtempSync(join(process.env.TMPDIR ?? "/tmp", "arc42-git-diff-"));
+  const root = mkdtempSync(join(tmpdir(), "arc42-git-diff-"));
   createdDirs.push(root);
   git(root, "init", "-q");
   git(root, "config", "user.email", "test@example.com");
@@ -65,8 +66,32 @@ describe("Git diff acquisition", () => {
     expect(stagedNodes?.find((n) => n.kind === "prose" && n.text === "Staged")).toBeTruthy();
   });
 
+  test("includes a changed .arc42.adoc file in working tree, staged, and revision diffs", () => {
+    const root = mkdtempSync(join(tmpdir(), "arc42-git-adoc-"));
+    createdDirs.push(root);
+    git(root, "init", "-q");
+    git(root, "config", "user.email", "test@example.com");
+    git(root, "config", "user.name", "arc42 test");
+    writeFileSync(join(root, "architecture.arc42.adoc"), "= Architecture\n\nInitial\n");
+    git(root, "add", ".");
+    git(root, "commit", "-qm", "initial");
+
+    writeFileSync(join(root, "architecture.arc42.adoc"), "= Architecture\n\nUpdated\n");
+    const working = collectGitDiff(root);
+    expect(working.currentDocuments[0]?.filePath).toBe("architecture.arc42.adoc");
+
+    git(root, "add", "architecture.arc42.adoc");
+    const staged = collectGitDiff(root, undefined, true);
+    expect(staged.currentDocuments[0]?.filePath).toBe("architecture.arc42.adoc");
+
+    const parent = git(root, "rev-parse", "HEAD").trim();
+    git(root, "commit", "-qm", "update");
+    const againstParent = collectGitDiff(root, parent);
+    expect(againstParent.currentDocuments[0]?.filePath).toBe("architecture.arc42.adoc");
+  });
+
   test("rejects a directory that is not a Git repository", () => {
-    const root = mkdtempSync(join(process.env.TMPDIR ?? "/tmp", "arc42-not-git-"));
+    const root = mkdtempSync(join(tmpdir(), "arc42-not-git-"));
     createdDirs.push(root);
     expect(() => collectGitDiff(root)).toThrow(/Git command failed/);
   });

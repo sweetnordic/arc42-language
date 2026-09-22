@@ -135,6 +135,23 @@ export function explainElement(blockType?: BlockType): ExplainResult | ExplainSu
 // Text rendering helpers
 // ---------------------------------------------------------------------------
 
+function markdownBlockExample(type: string, fields: ExplainFieldResult[]): string[] {
+  return ["```arc42", `:::${type}`, ...fields.map((f) => `${f.name}: `), ":::", "```"];
+}
+
+function asciidocBlockExample(type: string, fields: ExplainFieldResult[]): string[] {
+  return [`[arc42.${type}]`, "----", ...fields.map((f) => `${f.name}: `), "----"];
+}
+
+function appendSyntaxExamples(lines: string[], markdown: string[], asciidoc: string[]): void {
+  lines.push("");
+  lines.push("  Syntax:");
+  lines.push("    Markdown:");
+  for (const line of markdown) lines.push(`      ${line}`);
+  lines.push("    AsciiDoc:");
+  for (const line of asciidoc) lines.push(`      ${line}`);
+}
+
 export function formatExplainText(result: ExplainResult): string {
   const lines: string[] = [];
   lines.push(
@@ -142,6 +159,11 @@ export function formatExplainText(result: ExplainResult): string {
   );
   lines.push("");
   lines.push(`  ${result.description}`);
+  appendSyntaxExamples(
+    lines,
+    markdownBlockExample(result.blockType, result.requiredFields),
+    asciidocBlockExample(result.blockType, result.requiredFields),
+  );
 
   if (result.requiredFields.length > 0) {
     lines.push("");
@@ -253,6 +275,30 @@ export function formatExplainDiagramText(result: ExplainDiagramResult): string {
   lines.push(`diagram ${result.diagramType}`);
   lines.push("");
   lines.push(`  ${result.description}`);
+  appendSyntaxExamples(
+    lines,
+    [
+      "```arc42",
+      ":::diagram",
+      ...result.requiredFields.map((f) => `${f.name}: `),
+      ":::",
+      "```",
+      "```mermaid",
+      "...",
+      "```",
+    ],
+    [
+      "[arc42.diagram]",
+      "----",
+      ...result.requiredFields.map((f) => `${f.name}: `),
+      "----",
+      "",
+      "[source,mermaid]",
+      "----",
+      "...",
+      "----",
+    ],
+  );
 
   if (result.requiredFields.length > 0) {
     lines.push("");
@@ -332,11 +378,17 @@ const IGNORE_DATA: ExplainIgnoreResult = {
     "  :::ignore W001 reason on first line",
     "  :::",
     "",
-    "Both forms must be inside a ```arc42 fence:",
+    "Both Markdown forms must be inside a ```arc42 fence:",
     "  ```arc42",
     "  :::ignore H001 decision has no addresses because it is a foundational constraint",
     "  :::",
     "  ```",
+    "",
+    "AsciiDoc form (the delimited block is the wrapper):",
+    "  [arc42.ignore]",
+    "  ----",
+    "  H001 decision has no addresses because it is a foundational constraint",
+    "  ----",
   ],
   constraints: [
     "Only W (warning) and H (hint) rule codes can be ignored.",

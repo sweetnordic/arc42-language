@@ -8,6 +8,7 @@ const COMMANDS = [
   ["diff", "Report architecture-document changes that need review."],
   ["serve", "Serve the workspace in the browser for interactive exploration."],
   ["build", "Build a self-contained static site from a workspace for deployment."],
+  ["init", "Write starter chapter files for a new architecture workspace."],
 ] as const;
 
 export function rootHelp(): string {
@@ -74,8 +75,8 @@ Options:
   --strict              Also exit 1 when hints are found
   -h, --help            Show this help
 
-The command reads *.arc42.md files from the workspace, validates the model, and exits 0
-when it is valid. It exits 1 when errors are found and 2 for invalid command options.
+The command reads *.arc42.md and *.arc42.adoc files from the workspace, validates the model, and
+exits 0 when it is valid. It exits 1 when errors are found and 2 for invalid command options.
 `;
   }
 
@@ -91,7 +92,7 @@ Arguments:
 Options:
   --type <block-type>   Filter workspace results by block type
                         Use --type ignore to list all ignore directives
-  --format <format>     Output format: text, json, or markdown (default: text)
+  --format <format>     Output format: text, json, markdown, or asciidoc (default: text)
   -h, --help            Show this help
 ${blockTypes ? `\nBlock types:\n  ${blockTypes.join(", ")}\n` : ""}
 The command exits 0 when the requested workspace or element is found, 1 when an element
@@ -150,6 +151,7 @@ Options:
   --strict              Also exit 1 when hint findings are found
   -h, --help            Show this help
 
+The command includes changes to *.arc42.md and *.arc42.adoc files.
 Without a flag, the command compares the working tree with the index. With <reference>,
 it compares the working tree with that revision. Consistency findings exit 1; set
 ARC42_CONSISTENT to the displayed base commit after reviewing them. Advisory path hints do not
@@ -175,7 +177,8 @@ Options:
   -h, --help            Show this help
 
 The server watches the selected directory recursively and refreshes the browser when
-*.arc42.md files change. It exits 1 when the workspace or web assets cannot be loaded.
+*.arc42.md or *.arc42.adoc files change. It exits 1 when the workspace or web assets cannot be
+loaded.
 Use --dir or ARC42_DIR to select the workspace.
 `;
   }
@@ -204,15 +207,33 @@ Examples:
 `;
   }
 
+  if (command === "init") {
+    return `arc42 init — write starter chapter files
+
+Usage:
+  arc42 init [--dir <path>] [options]
+
+Options:
+  --dir <path>                 Destination directory (default: current directory)
+  --format <markdown|asciidoc> Chapter format (default: markdown)
+  -h, --help                   Show this help
+
+The command writes the twelve numbered chapter starters. Markdown files use .arc42.md;
+AsciiDoc files use .arc42.adoc. Existing files are skipped. It exits 0 after writing,
+and 2 for an unknown format or invalid option.
+`;
+  }
+
   if (command === "guide") {
     if (nestedCommand === "chapter") {
       return `arc42 guide chapter — guide authoring for one arc42 chapter
 
 Usage:
-  arc42 guide chapter <1-12>
+  arc42 guide chapter <1-12> [--format markdown|asciidoc]
 
 The output includes chapter dependencies, evidence prompts, relevant explain commands, and the
-generated starter template. It never creates or modifies files.
+generated starter template. --format asciidoc prints the AsciiDoc starter. It never creates or
+modifies files.
 `;
     }
     if (nestedCommand === "evidence") {
