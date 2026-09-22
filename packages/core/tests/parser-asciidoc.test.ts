@@ -126,6 +126,20 @@ ${qualityGoal()}`;
     expect(result[0]!.attributes["id"]).toBe("qg-1");
   });
 
+  test("indented block comments are dropped", () => {
+    const adoc = `  ////
+[arc42.building-block]
+----
+id: hidden
+title: Should not be parsed
+----
+  ////
+${qualityGoal()}`;
+    const result = blocks(adoc);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.attributes["id"]).toBe("qg-1");
+  });
+
   test("headings inside comments are not headings", () => {
     const adoc = `////
 == Hidden Heading

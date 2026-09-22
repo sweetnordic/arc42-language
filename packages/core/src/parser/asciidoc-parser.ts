@@ -7,7 +7,7 @@ const BLOCK_OPENER = /^\[arc42\.([a-z][a-z0-9-]*)\]\s*$/;
 const SOURCE_OPENER = /^\[source,([a-zA-Z0-9_-]+)\]\s*$/;
 const HEADING = /^(={1,6})\s+(.+)$/;
 const ATTRIBUTE = /^([a-z][a-z0-9-]*):\s*(.*)$/;
-const BLOCK_COMMENT = /^\/\/\/\/\s*$/;
+const BLOCK_COMMENT = /^\s*\/\/\/\/\s*$/;
 const LINE_COMMENT = /^\s*\/\//;
 const RULE_CODE = /^[a-zA-Z0-9]+[a-zA-Z0-9-]*$/;
 
