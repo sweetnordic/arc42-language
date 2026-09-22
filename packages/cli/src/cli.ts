@@ -37,7 +37,7 @@ import { commandHelp, rootHelp } from "./help.ts";
 import { CHAPTERS, guideText } from "./guide.ts";
 import { filename } from "./chapters.ts";
 import { formatCoverageTree } from "./coverage-tree.ts";
-import { markdownTemplateToAsciiDoc } from "./template-asciidoc.ts";
+import { convertMarkdownToAsciiDoc } from "./converter/asciidoc.ts";
 
 // Directory of the running CLI file — used to locate bundled assets
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -598,7 +598,7 @@ function runInit(args: string[], globalDir: string | undefined) {
       console.error(`skip: ${dest} already exists`);
       continue;
     }
-    const body = format === "asciidoc" ? markdownTemplateToAsciiDoc(item.template) : item.template;
+    const body = format === "asciidoc" ? convertMarkdownToAsciiDoc(item.template) : item.template;
     writeFileSync(dest, body.endsWith("\n") ? body : `${body}\n`);
     written += 1;
   }

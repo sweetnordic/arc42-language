@@ -1,5 +1,5 @@
 import { CHAPTERS, chapter } from "./chapters.ts";
-import { markdownTemplateToAsciiDoc } from "./template-asciidoc.ts";
+import { convertMarkdownToAsciiDoc } from "./converter/asciidoc.ts";
 
 export { CHAPTERS };
 
@@ -117,7 +117,7 @@ all medium/low-confidence and \`OPEN:\` rows to a human before final validation.
     const item = chapter(Number(argument));
     if (!item) throw new Error("Chapter must be a number from 1 to 12.");
     const template =
-      format === "asciidoc" ? markdownTemplateToAsciiDoc(item.template) : item.template;
+      format === "asciidoc" ? convertMarkdownToAsciiDoc(item.template) : item.template;
     const fence = format === "asciidoc" ? "asciidoc" : "markdown";
     return `# Chapter ${item.number}: ${item.title}
 
