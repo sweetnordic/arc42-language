@@ -15,13 +15,17 @@ Markdown stays the default. `.arc42.md` behavior does not change.
 - Both parsers emit the same `DocumentAst`. The builder, validator, and get query do not branch on format.
 - Blocks opened by `[arc42.<type>]` set `inArc42Fence: true`, so W016 does not fire on AsciiDoc.
 - Parsing is line-oriented, matching `parseMarkdown`: headings, prose, typed blocks, diagrams, ignore directives, and a `__parse_error__` node for an unclosed block.
-- `//` at the start of a line (optional leading whitespace) is a line comment. A line that is only `////` starts a block comment that ends at the next `////` line. Comments are removed before block recognition, including inside `----` regions.
+- `//` at the start of a line (optional leading whitespace) is a line comment. A line of optional whitespace plus `////` starts a block comment that ends at the next such line. Leading indentation is allowed. Comments are skipped before block recognition, including inside `----` regions.
 - `=` is heading level 1 and `==` is heading level 2, through six levels.
 - Diagrams and ignores do not use `:::` in AsciiDoc. `:::` stays the Markdown container syntax.
 - `arc42 get --format asciidoc` is a `GetRenderer` in `packages/cli/src/renderer/`, registered beside `text`, `json`, and `markdown`. It is a workspace view, not a chapter file.
 - `arc42 init` writes starter files. `--format markdown` writes `.arc42.md`. `--format asciidoc` writes `.arc42.adoc`. The default is markdown. Existing files are left in place.
-- Init and the round-trip tests share one template transform: Markdown chapter text from `CHAPTERS` → AsciiDoc source. `arc42 get` output is not parsed back.
+- Two writers, two jobs. `renderAsciiDocSource` in `packages/core/src/parser/asciidoc-writer.ts` serializes a `DocumentAst` back to AsciiDoc for round-trip tests. `convertMarkdownToAsciiDoc` in `packages/cli/src/converter/asciidoc.ts` rewrites Markdown chapter starters for `init` and `guide`. The converter does not call `parseMarkdown`. It is not `AsciiDocGetRenderer`. `arc42 get` output is not parsed back.
+- The converter is a line-oriented subset. It rewrites headings, HTML comments, `arc42` fences, `:::type` / `:::ignore`, mermaid fences, and the `.arc42.md` substring. Emphasis, Markdown links (the suffix is still rewritten), images, blockquotes, task lists, inline code, GFM tables, other fences, and other HTML are copied through. Each chapter template is checked so new unsupported Markdown fails the converter test.
+- HTML comment conversion only treats a line that is just `-->` as a closer, so Mermaid `-->` and `-->>` stay intact.
+- `arc42 guide chapter <n> --format asciidoc` converts only the embedded starter. The surrounding guide prompt stays Markdown.
 - Round-trip compares element kind, id, and schema fields. Line numbers and comments may differ.
+- `examples/bookstore-backend-asciidoc/` is the AsciiDoc bookstore workspace: the same twelve chapters as `examples/bookstore-backend`, authored as `.arc42.adoc`.
 
 ## Command coverage
 
@@ -32,7 +36,7 @@ Markdown stays the default. `.arc42.md` behavior does not change.
 | `coverage` | A `path` on an AsciiDoc building block or interface is claimed. |
 | `rules` | W016 and W017 docs name the AsciiDoc form as well as the Markdown form. |
 | `explain` | Block, diagram, and ignore explanations include an AsciiDoc example beside the Markdown example. |
-| `guide` | `arc42 guide chapter <n> --format asciidoc` prints the AsciiDoc starter. Migration text accepts either suffix. |
+| `guide` | `arc42 guide chapter <n> --format asciidoc` converts only the embedded starter. The surrounding prompt stays Markdown. Migration text accepts either suffix. |
 | `diff` | Working tree, index, and a named revision include `*.arc42.adoc`. |
 | `serve` | Reloads when a `*.arc42.adoc` file changes. Sidebar strips `.arc42.adoc`. |
 | `build` | An AsciiDoc workspace builds. Hashes keep the `.arc42.adoc` filename. |
@@ -120,6 +124,8 @@ graph TD
 - [x] Lock the grammar in the Syntax section. Do not add a second `[arc42]` wrapper around typed blocks.
 - [x] Lock file touch list:
   - `packages/core/src/parser/asciidoc-parser.ts` (new)
+  - `packages/core/src/parser/asciidoc-writer.ts` (new, AST → AsciiDoc for round-trip)
+  - `packages/core/src/parser/diagram-node.ts` (shared `createDiagramNode` for both parsers)
   - `packages/core/src/arc42.ts`
   - `packages/core/src/path-utils.ts`
   - `packages/core/src/explain.ts`
@@ -133,15 +139,18 @@ graph TD
   - `packages/cli/src/help.ts`
   - `packages/cli/src/chapters.ts`
   - `packages/cli/src/guide.ts`
-  - `packages/cli/src/template-asciidoc.ts` (new, shared by init, guide, and round-trip)
+  - `packages/cli/src/converter/asciidoc.ts` (new, `convertMarkdownToAsciiDoc` for init and guide)
   - `packages/web/src/utils.ts`
   - `packages/skill/SKILL.md`
   - `packages/cli/README.md`
+  - `examples/bookstore-backend-asciidoc/` (twelve `.arc42.adoc` chapters)
 - [x] Lock test files:
   - `packages/core/tests/parser-asciidoc.test.ts`
   - `packages/core/tests/parser-equivalence.test.ts`
   - `packages/core/tests/renderer-asciidoc-roundtrip.test.ts`
   - `packages/cli/tests/renderer-asciidoc.test.ts`
+  - `packages/cli/tests/converter-asciidoc.test.ts`
+  - `packages/cli/tests/asciidoc-cli.test.ts` (validate, init, explain, guide, coverage, get, serve help, build payload)
   - extensions of `packages/workspace-fs/tests/workspace-fs.test.ts`, `packages/workspace-fs/tests/git-diff.test.ts`, `packages/cli/tests/help.test.ts`, `packages/core/tests/validator-w015.test.ts`, `packages/core/tests/validator-e016.test.ts`, `packages/core/tests/validator-w016.test.ts`, `packages/core/tests/validator-w017` (or the existing bare-mermaid test module)
 - [x] Sequence the Code waves below. Each wave is red, then green, then `pnpm test` for the packages that wave touches.
 
@@ -158,7 +167,7 @@ Implement in order. Write the listed tests first and see them fail, then impleme
 
 - [x] **Red.** Create `packages/core/tests/parser-asciidoc.test.ts`. Copy the helpers in `packages/core/tests/parser.test.ts` (`blocks`, `headings`, `prose`, `ignores`) and call `parseAsciiDoc`. Cover at least 25 cases:
   - Basic structure (7): one typed block, heading levels 1–3 from `=` / `==` / `===`, prose, blank lines kept as prose, two blocks, unknown type kept as a block, unclosed `----` emits `__parse_error__`.
-  - Comments (6): `//` line dropped, `////` block dropped, heading inside a comment is not a heading, prose inside a comment is not prose, comment inside a block dropped before attributes, a comment does not swallow the next block.
+  - Comments (7): `//` line dropped, `////` block dropped, indented `////` block dropped, heading inside a comment is not a heading, prose inside a comment is not prose, comment inside a block dropped before attributes, a comment does not swallow the next block.
   - Block syntax (10): `[arc42.quality-goal]` attributes, `startLine` / `endLine`, several blocks, delimiter of more than four hyphens, `key: value` with a colon in the value, empty value, non-attribute body line ignored, `inArc42Fence === true`, diagram metadata fields, missing closing delimiter.
   - Ignore (3): `H014 reason` → rule code and reason, missing rule code → empty `ruleCode`, malformed body retained as an ignore node.
   - Diagrams (3): `[arc42.diagram]` plus `[source,mermaid]` fills `source`, bare `[source,mermaid]` is `BareMermaidNode`, diagram with no following source has empty `source`.
@@ -166,8 +175,8 @@ Implement in order. Write the listed tests first and see them fail, then impleme
   - quality goal, building block with attributes, several blocks with comments, diagram, ignore, heading levels 1–3, unknown type, prose and blank lines, actor, interface, decision, risk, glossary term, runtime scenario, deployment node, constraint, quality scenario.
 - [x] **Green.** Add `packages/core/src/parser/asciidoc-parser.ts`.
   - Export `parseAsciiDoc(filePath, content): DocumentAst` and `class AsciiDocParser implements Parser`.
-  - Reuse `createDiagramNode` behavior from `markdown-parser.ts` (building-block, context, deployment, mermaid-sequence, generic). Extract that helper to a shared function if both parsers need it; do not fork the diagram shape.
-  - Strip comments first, then scan lines as specified in Syntax.
+  - Reuse `createDiagramNode` from `packages/core/src/parser/diagram-node.ts` (building-block, context, deployment, mermaid-sequence, generic). Both parsers call that helper; do not fork the diagram shape.
+  - Skip `//` and `////` lines during the scan, including indented `////`, then recognize headings, blocks, diagrams, and ignores as specified in Syntax.
 - [x] **Green.** In `parseArchitectureDocument`, if `filePath` ends with `.arc42.adoc`, call `AsciiDocParser`. Otherwise keep `MarkdownParser`.
 - [x] **Verify.** `pnpm --filter @arc42/core test` passes, including the new files. Existing `parser.test.ts` is unchanged.
 
@@ -208,7 +217,7 @@ Implement in order. Write the listed tests first and see them fail, then impleme
 - [x] **Green.** In `commandHelp("get")`, list `asciidoc` next to `text`, `json`, and `markdown`. Add one `arc42 get --format asciidoc` example to `packages/cli/README.md`.
 - [x] **Verify.** CLI renderer tests pass. `arc42 get --format markdown` output is unchanged.
 
-### Wave 5 — Template transform, init, round-trip
+### Wave 5 — Converter, init, round-trip
 
 - [x] **Red.** Create `packages/core/tests/renderer-asciidoc-roundtrip.test.ts` with at least 5 read → AsciiDoc source → read cases and 3 preservation cases:
   - Markdown sample → `parseMarkdown` → `renderAsciiDocSource` → `parseAsciiDoc` → same element kind, id, and schema fields.
@@ -225,16 +234,18 @@ Implement in order. Write the listed tests first and see them fail, then impleme
   - `arc42 validate --dir` on the AsciiDoc directory exits 0.
   - Generated chapter title is a level-1 heading. Example blocks are `[arc42.<type>]`, not `:::`.
   - A cross-chapter link targets `.arc42.adoc`.
-- [x] **Green.** Add `renderAsciiDocSource(documents: DocumentAst[]): string` in `packages/core/src/parser/asciidoc-writer.ts` (or `packages/cli/src/template-asciidoc.ts` if it only serves the CLI). It emits the Syntax section from an AST: `=` headings, prose lines, `[arc42.<type>]` blocks, `[arc42.ignore]`, `[arc42.diagram]` plus `[source,…]`. This is what the round-trip tests call. It is not `AsciiDocGetRenderer`.
-- [x] **Green.** Add `markdownTemplateToAsciiDoc(template: string): string` used by init and guide:
-  - `#` / `##` / `###` at line start → `=` / `==` / `===`
-  - HTML comments → `////` block comments
-  - ` ```arc42 ` … `:::type` … `:::` … ` ``` ` → `[arc42.type]` … `----`
-  - `:::ignore` and `:::diagram` → the Syntax forms
-  - `](….arc42.md)` → `](….arc42.adoc)`
+- [x] **Red.** In `packages/cli/tests/converter-asciidoc.test.ts`, a mermaid fence that contains `-->` and `-->>` survives, an HTML comment becomes `////` without rewriting arrows inside it, and every `CHAPTERS` template stays inside the converter subset (chapter 1 may keep a GFM table and Markdown links).
+- [x] **Green.** Add `renderAsciiDocSource(documents: DocumentAst[]): string` in `packages/core/src/parser/asciidoc-writer.ts`. It emits the Syntax section from an AST: `=` headings, prose lines, `[arc42.<type>]` blocks, `[arc42.ignore]`, `[arc42.diagram]` plus `[source,…]`. This is what the round-trip tests call. It is not `AsciiDocGetRenderer` and not the init converter.
+- [x] **Green.** Add `convertMarkdownToAsciiDoc(markdown: string): string` in `packages/cli/src/converter/asciidoc.ts`, used by init and guide. It does not parse to a `DocumentAst`. Rewrites:
+  - `#` … `######` at line start → `=` … `======`
+  - `<!-- … -->` → `////`, and only a line that is just `-->` closes a multi-line comment, so Mermaid `-->` / `-->>` stay
+  - ` ```arc42 ` fences are stripped; `:::type` / `:::ignore` → `[arc42.type]` / `[arc42.ignore]` plus `----`
+  - ` ```mermaid ` → `[source,mermaid]` plus `----`
+  - the substring `.arc42.md` → `.arc42.adoc` on every other line
+  - Leave emphasis, Markdown links, images, blockquotes, task lists, inline code, GFM tables, other fences, and other HTML unchanged.
 - [x] **Green.** Add `runInit` in `packages/cli/src/cli.ts`, dispatched before workspace discovery the same way `guide` is, so init does not warn about a missing workspace.
   - Flags: `--dir <path>` (default cwd), `--format markdown|asciidoc` (default `markdown`).
-  - Write `filename(chapter)` for markdown. For asciidoc, replace the `.md` suffix with `.adoc` and write `markdownTemplateToAsciiDoc(chapter.template)`.
+  - Write `filename(chapter)` for markdown. For asciidoc, replace the `.md` suffix with `.adoc` and write `convertMarkdownToAsciiDoc(chapter.template)`.
   - `mkdir` the directory. If the destination file exists, print a skip line and continue.
 - [x] **Green.** Add `init` to `COMMANDS` and `commandHelp("init")` in `packages/cli/src/help.ts`.
 - [x] **Verify.** Round-trip tests and init tests pass. `arc42 init --format asciidoc` on a temp dir validates.
@@ -249,7 +260,7 @@ Implement in order. Write the listed tests first and see them fail, then impleme
   - `arc42 guide chapter 2 --format asciidoc` contains `[arc42.constraint]` and does not contain a ` ```arc42 ` fence.
   - `arc42 guide chapter 2` without `--format` stays Markdown.
 - [x] **Green.** In `packages/core/src/explain.ts`, append an AsciiDoc example to each block explanation, each diagram explanation, and `IGNORE_DATA.syntax`. Build the block example from the type name: `[arc42.<type>]`, `----`, one line per required field, `----`.
-- [x] **Green.** `runGuide` accepts `--format markdown|asciidoc` on `chapter`. Pass the chapter template through `markdownTemplateToAsciiDoc` when the format is asciidoc.
+- [x] **Green.** `runGuide` accepts `--format markdown|asciidoc` on `chapter`. Pass only the chapter template through `convertMarkdownToAsciiDoc` when the format is asciidoc. The guide prompt around that starter stays Markdown.
 - [x] **Green.** In `packages/cli/src/guide.ts`, describe chapter files as `*.arc42.md` or `*.arc42.adoc` and say the workspace uses one suffix.
 - [x] **Green.** In `packages/skill/SKILL.md`, name both suffixes in the description and workflow, and show the `[arc42.ignore]` example next to the existing `:::ignore` fence.
 - [x] **Verify.** Explain, rules, and guide tests pass. `arc42 guide chapter 1` Markdown output is unchanged apart from the suffix wording in the migration guide.
@@ -272,6 +283,7 @@ Implement in order. Write the listed tests first and see them fail, then impleme
 - [x] `pnpm run check` passes.
 - [x] `pnpm test` passes.
 - [x] `arc42 validate --dir examples/bookstore-backend` exits 0.
+- [x] `examples/bookstore-backend-asciidoc` is the twelve-chapter AsciiDoc bookstore.
 - [x] Commit subject: `feat: support AsciiDoc architecture documents`
 - [x] Commit body lists parser, discovery, validate, get, init, explain, guide, diff, coverage, serve, and build.
 
@@ -308,14 +320,15 @@ Implement in order. Write the listed tests first and see them fail, then impleme
 
 ### Init
 
-- [x] `arc42 init --format asciidoc` writes twelve chapter files
+- [x] `arc42 init --format asciidoc` writes twelve chapter files via `convertMarkdownToAsciiDoc`
 - [x] That directory validates with exit 0
 - [x] Existing files are not overwritten
+- [x] Converter tests keep Mermaid arrows and reject chapter templates that leave the supported Markdown subset
 
 ### Every other command
 
 - [x] `arc42 explain` shows Markdown and AsciiDoc syntax for blocks, diagrams, and ignore
-- [x] `arc42 guide chapter <n> --format asciidoc` prints an AsciiDoc starter
+- [x] `arc42 guide chapter <n> --format asciidoc` converts only the embedded starter; the surrounding prompt stays Markdown
 - [x] `arc42 rules` describes the AsciiDoc form of W016 and W017
 - [x] `arc42 diff` includes `.arc42.adoc` changes
 - [x] `arc42 coverage` claims paths declared in AsciiDoc elements
